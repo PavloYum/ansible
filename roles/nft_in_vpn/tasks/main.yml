@@ -1,0 +1,40 @@
+---
+- name: Enable forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
+- name: Install nftables
+  ansible.builtin.apt:
+    pkg: nftables
+    state: latest
+    update_cache: true
+- name: Config nftables
+  ansible.builtin.template:
+    src: nft_conf.j2
+    dest: /etc/nftables.conf
+    backup: true
+    mode: '0755'
+- name: Create cert directorys
+  ansible.builtin.file:
+    path: /etc/nftables.d
+    state: directory
+    mode: '0755'
+- name: Config nft defines
+  ansible.builtin.template:
+    src: defines.j2
+    dest: /etc/nftables.d/defines.nft
+    backup: true
+    mode: '0644'
+- name: Enable and start nftables
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: true
+    enabled: true
+    masked: false
+    name: nftables
+  register: nftables
+  notify:
+    - Purge iptables

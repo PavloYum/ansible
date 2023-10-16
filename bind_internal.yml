@@ -1,0 +1,10 @@
+---
+- name: Setup & configure bind9 on debian based distros
+  hosts: all
+  remote_user: root
+  vars_prompt:
+    - name: "FQDN"
+      prompt: 'Domain name'
+      private: false
+  roles:
+    - role: bind

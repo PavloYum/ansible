@@ -1,0 +1,141 @@
+---
+- name: Install packages
+  ansible.builtin.apt:
+    pkg: ['curl', 'openssl', 'sudo', 'screen', 'nginx', 'nginx-full']
+    state: latest
+    install_recommends: false
+    update_cache: 'True'
+- name: Create user {{ USER }}
+  ansible.builtin.user:
+    name: "{{ USER }}"
+    shell: /bin/bash
+    home: "/home/{{ USER }}"
+    generate_ssh_key: 'True'
+    ssh_key_type: ecdsa
+    ssh_key_bits: 384
+- name: Create screenrc
+  ansible.builtin.template:
+    src: screenrc.j2
+    dest: "/home/{{ USER }}/.screenrc"
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: 0644
+- name: Nopassword for user systemctl command
+  ansible.builtin.lineinfile:
+    dest: "/etc/sudoers.d/{{ USER }}"
+    create: 'True'
+    mode: 0644
+    regexp: '^{{ USER }} ALL\='
+    line: "{{ USER }} ALL=(ALL:ALL) NOPASSWD:/usr/bin/systemctl"
+    validate: 'visudo -cf %s'
+- name: Create bin directory in home {{ USER }}
+  ansible.builtin.file:
+    path: '/home/{{ USER }}/{{ item }}'
+    state: directory
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: 0755
+  with_items:
+    - .acme.sh
+    - bin
+    - letsencrypt
+    - .log/screen/
+- name: Download acme.sh
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/Neilpang/acme.sh/master/acme.sh
+    dest: "/home/{{ USER }}/.acme.sh/"
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: '0755'
+- name: Add env to bashrc
+  ansible.builtin.blockinfile:
+    path: "/home/{{ USER }}/.bashrc"
+    create: 'True'
+    mode: '0644'
+    block: |
+      # include bash completion
+      if [ -f /etc/bash_completion ] && ! shopt -oq posix; then
+          . /etc/bash_completion
+      fi
+      # set primary prompt variable
+      PS1='\[\e[1;36m\][\A]\[\e[1;34m\]\u@\[\e[1;33m\]\H:\[\e[1;36m\]\w\$\[\e[0m\] '
+      # exports
+      export EDITOR=/usr/bin/vim
+      export PAGER=/usr/bin/less
+      export LE_WORKING_DIR="/home/{{ USER }}/.acme.sh"
+      alias acme.sh="/home/{{ USER }}/.acme.sh/acme.sh"
+      # history
+      HISTCONTROL=ignoredups
+      HISTCONTROL=ignorespace
+      HISTCONTROL=erasedups
+      shopt -s histappend
+      PROMPT_COMMAND='history -a'
+- name: Create link to script
+  ansible.builtin.file:
+    src: "/home/{{ USER }}/.acme.sh/acme.sh"
+    dest: "/home/{{ USER }}/bin/acme.sh"
+    state: link
+    force: 'True'
+    mode: 0750
+- name: Renew script create
+  ansible.builtin.template:
+    src: renew.j2
+    dest: "/home/{{ USER }}/bin/renew.sh"
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: 0775
+- name: Add cron job
+  ansible.builtin.cron:
+    name: renew certificates
+    minute: "34"
+    hour: "0"
+    job: "/home/{{ USER }}/bin/renew.sh"
+    user: "{{ USER }}"
+- name: Create cert directorys
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: 0755
+  with_items:
+    - /etc/nginx/certs
+    - /etc/nginx/certs/{{ FQDN }}
+- name: Create Diffie-Helman key
+  community.crypto.openssl_dhparam:
+    path: /etc/nginx/certs/dhparam.pem
+    size: 2048
+- name: Acme in nginx
+  ansible.builtin.template:
+    src: acme.j2
+    dest: /etc/nginx/le.conf
+    mode: '0600'
+- name: Disable server tokens
+  ansible.builtin.lineinfile:
+    path: /etc/nginx/nginx.conf
+    regexp: '# server_tokens off'
+    line: "\tserver_tokens off;"
+- name: Change nginx user
+  ansible.builtin.lineinfile:
+    path: /etc/nginx/nginx.conf
+    regexp: '^user '
+    line: "user {{ USER }};"
+- name: Remove default config
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+- name: Create templ config
+  ansible.builtin.template:
+    src: site.j2
+    dest: /etc/nginx/sites-available/{{ FQDN }}.conf
+    mode: '0600'
+    backup: 'True'
+  notify:
+    - Reload nginx
+- name: Enable virtual host
+  ansible.builtin.file:
+    src: ../sites-available/{{ FQDN }}.conf
+    dest: /etc/nginx/sites-enabled/{{ FQDN }}.conf
+    state: link
+    force: yes
+    mode: '0600'

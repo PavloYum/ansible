@@ -1,0 +1,9 @@
+---
+- name: Get external IP
+  hosts: all
+  tasks:
+    - name: Get public IP
+      community.general.ipify_facts:
+    - name: Public IP is
+      ansible.builtin.debug:
+        msg: "{{ ipify_public_ip }}"

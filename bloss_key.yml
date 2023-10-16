@@ -1,0 +1,10 @@
+---
+- name: Add ssh key
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Set authorized key for root
+      ansible.posix.authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/bloss.pub') }}"

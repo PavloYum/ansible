@@ -1,0 +1,5 @@
+---
+- name: Upgrade distr
+  hosts: all
+  roles:
+    - { role: upgrade-dist, tags: update }

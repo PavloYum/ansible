@@ -1,0 +1,9 @@
+---
+- name: Add task (clean memory cache) to cron
+  ansible.builtin.cron:
+    name: "clean memory cache"
+    minute: "6"
+    hour: "6"
+    user: root
+    state: present
+    job: "/bin/echo 1 > /proc/sys/vm/drop_caches"

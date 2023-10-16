@@ -1,0 +1,9 @@
+---
+- name: Started dante-server
+  ansible.builtin.service:
+    name: danted
+    state: started
+- name: Reload bind9
+  ansible.builtin.service:
+    name: bind9
+    state: reloaded

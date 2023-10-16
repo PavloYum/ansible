@@ -1,0 +1,6 @@
+---
+- name: Disable IPv6 on instance
+  hosts: all
+  gather_facts: false
+  roles:
+    - { role: disable-ipv6, tags: sysctl }

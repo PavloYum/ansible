@@ -1,0 +1,33 @@
+---
+- name: Setup and configure asterisk server
+  hosts: all
+  remote_user: root
+  vars_prompt:
+    - name: "pwroot"
+      prompt: "Enter root passwd"
+      encrypt: "sha512_crypt"
+      confirm: true
+      salt_size: 7
+      private: false
+    - name: "hostname"
+      prompt: "Enter hostname for node"
+      private: false
+    - name: "server_env"
+      prompt: "use a single value main or reserv"
+      private: false
+      default: "main"
+    - name: "CRYPT_SIZE"
+      prompt: "Enter size of container in GiB"
+      private: false
+    - name: "CRYPT_PASSWD"
+      prompt: "Enter password"
+      private: false
+  tasks:
+    - name: Include conf tasks
+      ansible.legacy.include_tasks: "{{ item }}"
+      loop:
+        - time_settings.yml
+        - disable_ipv6.yml
+  roles:
+    - { role: upgrade-dist, tags: update }
+    - { role: voip, tags: pbx }

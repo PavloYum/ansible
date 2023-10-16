@@ -1,0 +1,16 @@
+---
+- name: Install nftables
+  ansible.builtin.apt:
+    pkg: nftables
+    state: latest
+    update_cache: true
+- name: Enable and start nftables
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: true
+    enabled: true
+    masked: false
+    name: nftables
+  register: nftables
+  notify:
+    - purge iptables

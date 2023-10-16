@@ -1,0 +1,29 @@
+---
+- name: Install packages
+  ansible.builtin.apt:
+    pkg: ['bash-completion', 'screen', 'vim']
+    state: latest
+    update_cache: true
+- name: Purge vim-tiny
+  ansible.builtin.apt:
+    pkg: ['vim-tiny', 'nano']
+    state: absent
+  when: ansible_distribution_major_version|int >= 10
+- name: Update bashrc
+  ansible.builtin.template:
+    src: bashrc.j2
+    dest: /root/.bashrc
+    mode: 0644
+    backup: true
+- name: Create vimrc
+  ansible.builtin.template:
+    src: vimrc.j2
+    dest: /root/.vimrc
+    mode: 0644
+    backup: true
+- name: Create screenrc
+  ansible.builtin.template:
+    src: screenrc.j2
+    dest: /root/.screenrc
+    mode: 0644
+    backup: true
